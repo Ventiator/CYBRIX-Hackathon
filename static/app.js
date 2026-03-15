@@ -1,10 +1,10 @@
 // ── State ─────────────────────────────────────────────────────────────────────
-let sessionId     = localStorage.getItem('cybrix_session') || null;
+let sessionId = localStorage.getItem('cybrix_session') || null;
 let currentFilter = 'ALL';
-let allEvents     = [];
-let knownIds      = new Set();
-let isStreaming   = false;
-let threatCount   = 0;
+let allEvents = [];
+let knownIds = new Set();
+let isStreaming = false;
+let threatCount = 0;
 
 // ── Persist session ───────────────────────────────────────────────────────────
 function saveSession(id) {
@@ -20,7 +20,7 @@ function saveChatToStorage() {
 
 function loadChatFromStorage() {
   const saved = localStorage.getItem('cybrix_chat');
-  const msgs  = document.getElementById('chat-messages');
+  const msgs = document.getElementById('chat-messages');
   if (saved && msgs) {
     msgs.innerHTML = saved;
     msgs.scrollTop = msgs.scrollHeight;
@@ -39,13 +39,13 @@ function renderMD(text) {
 
 // ── Token Counter ─────────────────────────────────────────────────────────────
 const tokenStats = {
-  input:  parseInt(localStorage.getItem('cybrix_tokens_input')  || '0'),
+  input: parseInt(localStorage.getItem('cybrix_tokens_input') || '0'),
   output: parseInt(localStorage.getItem('cybrix_tokens_output') || '0')
 };
 function updateTokenDisplay(inputT, outputT) {
-  tokenStats.input  += inputT  || 0;
+  tokenStats.input += inputT || 0;
   tokenStats.output += outputT || 0;
-  localStorage.setItem('cybrix_tokens_input',  tokenStats.input);
+  localStorage.setItem('cybrix_tokens_input', tokenStats.input);
   localStorage.setItem('cybrix_tokens_output', tokenStats.output);
   const cost = ((tokenStats.input * 2 + tokenStats.output * 8) / 1_000_000).toFixed(5);
   const el = document.getElementById('token-counter');
@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => updateTokenDisplay(0, 0));
 // ── Clock ─────────────────────────────────────────────────────────────────────
 function updateClock() {
   document.getElementById('clock').textContent =
-    new Date().toLocaleTimeString('en-US', {hour12: false});
+    new Date().toLocaleTimeString('en-US', { hour12: false });
 }
 setInterval(updateClock, 1000);
 updateClock();
@@ -73,14 +73,14 @@ function setFilter(f) {
 function severityClass(s) { return `sev-${s}`; }
 
 function formatTime(ts) {
-  try { return new Date(ts).toLocaleTimeString('en-US', {hour12: false}); }
+  try { return new Date(ts).toLocaleTimeString('en-US', { hour12: false }); }
   catch { return ts; }
 }
 
 function renderEvents() {
-  const list        = document.getElementById('events-list');
+  const list = document.getElementById('events-list');
   const searchInput = document.getElementById('event-search');
-  const searchTerm  = searchInput ? searchInput.value.toLowerCase().trim() : '';
+  const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
   let filtered = currentFilter === 'ALL'
     ? allEvents
@@ -89,11 +89,11 @@ function renderEvents() {
   // Apply search filter
   if (searchTerm) {
     filtered = filtered.filter(e =>
-      (e.description  || '').toLowerCase().includes(searchTerm) ||
-      (e.source_ip    || '').toLowerCase().includes(searchTerm) ||
-      (e.event_type   || '').toLowerCase().includes(searchTerm) ||
-      (e.source       || '').toLowerCase().includes(searchTerm) ||
-      (e.dest_ip      || '').toLowerCase().includes(searchTerm)
+      (e.description || '').toLowerCase().includes(searchTerm) ||
+      (e.source_ip || '').toLowerCase().includes(searchTerm) ||
+      (e.event_type || '').toLowerCase().includes(searchTerm) ||
+      (e.source || '').toLowerCase().includes(searchTerm) ||
+      (e.dest_ip || '').toLowerCase().includes(searchTerm)
     );
   }
 
@@ -121,7 +121,7 @@ function renderEvents() {
 // ── Poll Events ───────────────────────────────────────────────────────────────
 async function pollEvents() {
   try {
-    const res  = await fetch('/api/events?limit=200');
+    const res = await fetch('/api/events?limit=200');
     const data = await res.json();
 
     let hasNew = false;
@@ -131,18 +131,18 @@ async function pollEvents() {
     if (hasNew) { allEvents = data.events; renderEvents(); }
 
     const s = data.stats;
-    document.getElementById('stat-total').textContent    = data.total;
+    document.getElementById('stat-total').textContent = data.total;
     document.getElementById('stat-critical').textContent = s.critical;
-    document.getElementById('stat-high').textContent     = s.high;
-    document.getElementById('stat-medium').textContent   = s.medium;
-    document.getElementById('stat-ips').textContent      = s.unique_ips;
-  } catch(e) { console.error('Poll error:', e); }
+    document.getElementById('stat-high').textContent = s.high;
+    document.getElementById('stat-medium').textContent = s.medium;
+    document.getElementById('stat-ips').textContent = s.unique_ips;
+  } catch (e) { console.error('Poll error:', e); }
 }
 
 // ── Poll Source Status ────────────────────────────────────────────────────────
 async function pollStatus() {
   try {
-    const res  = await fetch('/api/status');
+    const res = await fetch('/api/status');
     const data = await res.json();
     // Only update pills that exist in the DOM (static Ubuntu pills)
     for (const [name, status] of Object.entries(data)) {
@@ -150,7 +150,7 @@ async function pollStatus() {
       if (!el) continue; // skip removed pills (cisco, fortigate, syslog_rx)
       el.className = `source-pill ${status.connected ? 'connected' : 'disconnected'}`;
     }
-  } catch(e) {}
+  } catch (e) { }
 }
 
 // ── Poll Devices ──────────────────────────────────────────────────────────────
@@ -158,7 +158,7 @@ let lastDevicesHash = '';
 
 async function pollDevices() {
   try {
-    const res  = await fetch('/api/devices');
+    const res = await fetch('/api/devices');
     const data = await res.json();
     const container = document.getElementById('dynamic-device-pills');
     if (!container) return;
@@ -177,7 +177,7 @@ async function pollDevices() {
     try {
       const sr = await fetch('/api/status');
       sourceStatus = await sr.json();
-    } catch(e) {}
+    } catch (e) { }
 
     networkDevices.forEach(d => {
       // For Fortigate: use syslog status not SSH status
@@ -201,25 +201,25 @@ async function pollDevices() {
       xBtn.className = 'remove-device-btn';
       xBtn.textContent = ' ✕';
       xBtn.title = 'Remove device';
-      xBtn.addEventListener('click', function(e) {
+      xBtn.addEventListener('click', function (e) {
         e.stopPropagation();
         removeDevice(d.id);
       });
       pill.appendChild(xBtn);
       container.appendChild(pill);
     });
-  } catch(e) {}
+  } catch (e) { }
 }
 
 async function removeDevice(deviceId) {
   if (!confirm(`Remove device ${deviceId}?`)) return;
   try {
-    const res  = await fetch(`/api/devices/${deviceId}`, { method: 'DELETE' });
+    const res = await fetch(`/api/devices/${deviceId}`, { method: 'DELETE' });
     const data = await res.json();
     if (data.status === 'removed') {
       pollDevices();
     }
-  } catch(e) { console.error('Remove device error:', e); }
+  } catch (e) { console.error('Remove device error:', e); }
 }
 
 // ── Alert History ────────────────────────────────────────────────────────────
@@ -276,7 +276,7 @@ function renderAlertHistory() {
       <div class="managed-ip-info" style="flex:1;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
           <span style="font-family:var(--font-head);font-size:11px;color:${sevColors[alert.severity] || '#546e7a'};letter-spacing:1px;">
-            ⚠ ${(alert.type || '').replace(/_/g,' ')}
+            ⚠ ${(alert.type || '').replace(/_/g, ' ')}
           </span>
           <span style="font-family:var(--font-mono);font-size:9px;color:var(--text2);">
             ${alert.timestamp ? new Date(alert.timestamp).toLocaleTimeString() : ''}
@@ -287,12 +287,12 @@ function renderAlertHistory() {
         <div style="font-family:var(--font-mono);font-size:9px;color:var(--orange);margin-top:4px;">KILL CHAIN: ${alert.kill_chain || 'Unknown'}</div>
         <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center;">
           <button class="threat-action-btn" 
-            onclick="navigator.clipboard.writeText('${(alert.action||'').replace(/'/g,"\'")}').then(()=>this.textContent='✅ COPIED')"
+            onclick="navigator.clipboard.writeText('${(alert.action || '').replace(/'/g, "\'")}').then(()=>this.textContent='✅ COPIED')"
             style="font-size:9px;">COPY CMD</button>
           ${alert._remediated
-            ? `<span style="font-family:var(--font-mono);font-size:10px;color:#00e676;background:rgba(0,230,118,0.1);border:1px solid #00e676;padding:2px 8px;border-radius:2px;">✅ ${alert._remediated}</span>`
-            : remButtons
-          }
+        ? `<span style="font-family:var(--font-mono);font-size:10px;color:#00e676;background:rgba(0,230,118,0.1);border:1px solid #00e676;padding:2px 8px;border-radius:2px;">✅ ${alert._remediated}</span>`
+        : remButtons
+      }
           <button class="threat-action-btn" onclick="removeFromHistory(${idx})"
             style="font-size:9px;color:var(--text2);border-color:var(--border);margin-left:auto;">✕ DISMISS</button>
         </div>
@@ -346,10 +346,10 @@ let lastAlertTimestamp = '';
 
 async function pollAlerts() {
   try {
-    const url  = lastAlertTimestamp
+    const url = lastAlertTimestamp
       ? `/api/alerts/pending?since=${encodeURIComponent(lastAlertTimestamp)}`
       : '/api/alerts/pending';
-    const res  = await fetch(url);
+    const res = await fetch(url);
     const data = await res.json();
     for (const item of data.alerts) {
       showThreatPopup(item);
@@ -358,7 +358,7 @@ async function pollAlerts() {
         lastAlertTimestamp = item.timestamp;
       }
     }
-  } catch(e) {}
+  } catch (e) { }
 }
 
 // ── Active alert cards ────────────────────────────────────────────────────────
@@ -380,7 +380,7 @@ function hasSeenAlert(alertId) {
 function getRemediationButtons(alert) {
   const ip = alert.ip;
   const isFortigate = alert.device_source === 'fortigate' || (alert.detail && alert.detail.includes('Fortigate'));
-  const isCisco     = alert.device_source === 'cisco'     || (alert.detail && alert.detail.includes('Cisco'));
+  const isCisco = alert.device_source === 'cisco' || (alert.detail && alert.detail.includes('Cisco'));
 
   if (isFortigate) {
     // Fortigate: auto-block via paramiko SSH
@@ -405,8 +405,8 @@ function getRemediationButtons(alert) {
 // ── Show Threat Popup ─────────────────────────────────────────────────────────
 function showThreatPopup(item) {
   const { alert } = item;
-  const key      = alert.live_counter_key || `${alert.type}_${alert.ip}`;
-  const alertId  = item.id || key;
+  const key = alert.live_counter_key || `${alert.type}_${alert.ip}`;
+  const alertId = item.id || key;
 
   // Always add to history regardless of dedup
   addToAlertHistory(item);
@@ -419,20 +419,23 @@ function showThreatPopup(item) {
   threatCount++;
   const badge = document.getElementById('threat-badge');
   badge.style.display = 'inline-flex';
-  badge.style.cursor  = 'pointer';
-  badge.textContent   = threatCount;
+  badge.style.cursor = 'pointer';
+  badge.textContent = threatCount;
 
   const popup = document.getElementById('alert-popup');
-  const card  = document.createElement('div');
+  const card = document.createElement('div');
   card.className = 'threat-card';
   card.id = `card-${key}`;
   card.innerHTML = `
     <div class="threat-card-header">
-      <div class="threat-type">⚠ ${alert.type.replace(/_/g,' ')}</div>
+      <div class="threat-type">⚠ ${alert.type.replace(/_/g, ' ')}</div>
       <div class="threat-sev">${alert.severity}</div>
     </div>
     <div class="threat-ip">🎯 ${alert.ip}</div>
     <div class="threat-detail" id="detail-${key}">${alert.detail}</div>
+    <div class="threat-ti" id="ti-${key}" style="font-family:var(--font-mono);font-size:10px;color:var(--cyan2);margin-top:4px;">
+      ${alert.ti_info || '⏳ enriching...'}
+    </div>
     <div class="threat-kill-chain">KILL CHAIN: ${alert.kill_chain}</div>
     <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap;">
       <button class="threat-action-btn" onclick="copyCommand('${alert.action}')">COPY CMD</button>
@@ -444,6 +447,23 @@ function showThreatPopup(item) {
 
   popup.appendChild(card);
   activeCards[key] = card;
+
+  // Fetch threat intelligence in background
+  fetch(`/api/threat_intel/${alert.ip}`)
+    .then(r => r.json())
+    .then(ti => {
+      const tiEl = document.getElementById(`ti-${key}`);
+      if (!tiEl) return;
+      const parts = [];
+      if (ti.country) parts.push(`📍 ${ti.city || ''} ${ti.country} | ${ti.org || ''}`);
+      if (ti.vt_malicious > 0) parts.push(`🦠 VirusTotal: ${ti.vt_malicious}/${ti.vt_total} vendors`);
+      else if (ti.vt_total) parts.push(`✅ VirusTotal: clean (${ti.vt_total} vendors)`);
+      tiEl.textContent = parts.length ? parts.join(' | ') : '📍 No threat intel available';
+    })
+    .catch(() => {
+      const tiEl = document.getElementById(`ti-${key}`);
+      if (tiEl) tiEl.textContent = '';
+    });
 }
 
 function dismissCard(key) {
@@ -463,13 +483,13 @@ async function autoRemediateDevice(ip, mode, deviceId, btn) {
   btn.textContent = '⏳ BLOCKING...';
   btn.style.opacity = '0.6';
   try {
-    const res  = await fetch('/api/remediate', {
+    const res = await fetch('/api/remediate', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ip, device_id: deviceId, mode, hitcount: getRateLimitSetting() })
     });
     const data = await res.json();
-    const card      = btn.closest('.threat-card') || btn.closest('.managed-ip-row');
+    const card = btn.closest('.threat-card') || btn.closest('.managed-ip-row');
     const statusDiv = card ? card.querySelector('.remediate-status') : null;
     if (data.success) {
       btn.textContent = '✅ BLOCKED';
@@ -487,7 +507,7 @@ async function autoRemediateDevice(ip, mode, deviceId, btn) {
       btn.disabled = false;
       if (statusDiv) { statusDiv.style.display = 'block'; statusDiv.style.color = '#ff1744'; statusDiv.textContent = '❌ ' + data.message; }
     }
-  } catch(e) {
+  } catch (e) {
     btn.textContent = '❌ ERROR';
     btn.disabled = false;
   }
@@ -495,16 +515,16 @@ async function autoRemediateDevice(ip, mode, deviceId, btn) {
 
 async function autoRemediate(ip, mode, btn) {
   const deviceId = 'ubuntu-main';
-  const isBlock  = mode === 'block';
+  const isBlock = mode === 'block';
 
   btn.disabled = true;
   btn.textContent = isBlock ? '⏳ BLOCKING...' : '⏳ LIMITING...';
   btn.style.opacity = '0.6';
 
   try {
-    const res  = await fetch('/api/remediate', {
+    const res = await fetch('/api/remediate', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ip, device_id: deviceId, mode, hitcount: getRateLimitSetting() })
     });
     const data = await res.json();
@@ -534,7 +554,7 @@ async function autoRemediate(ip, mode, btn) {
         statusDiv.textContent = `❌ ${data.message}`;
       }
     }
-  } catch(e) {
+  } catch (e) {
     btn.textContent = '❌ ERROR';
     console.error('Remediate error:', e);
   }
@@ -543,7 +563,7 @@ async function autoRemediate(ip, mode, btn) {
 // ── Poll active alert counters ────────────────────────────────────────────────
 async function pollActiveAlerts() {
   try {
-    const res  = await fetch('/api/alerts/active');
+    const res = await fetch('/api/alerts/active');
     const data = await res.json();
     for (const [key, info] of Object.entries(data)) {
       const detailEl = document.getElementById(`detail-${key}`);
@@ -551,13 +571,13 @@ async function pollActiveAlerts() {
         detailEl.textContent = `${info.count} failed logins in 5 minutes from ${info.ip}`;
       }
     }
-  } catch(e) {}
+  } catch (e) { }
 }
 
 // ── Chat Functions ────────────────────────────────────────────────────────────
 function addMessage(role, text) {
   const msgs = document.getElementById('chat-messages');
-  const div  = document.createElement('div');
+  const div = document.createElement('div');
   div.className = `msg ${role}`;
   div.innerHTML = `
     <div class="msg-label">${role === 'user' ? 'ANALYST' : 'CYBRIX-AI'}</div>
@@ -571,7 +591,7 @@ function addMessage(role, text) {
 
 function addAlertMessage(text) {
   const msgs = document.getElementById('chat-messages');
-  const div  = document.createElement('div');
+  const div = document.createElement('div');
   div.className = 'msg alert-msg';
   div.innerHTML = `
     <div class="msg-label">⚠ AUTOMATED THREAT ALERT</div>
@@ -583,7 +603,7 @@ function addAlertMessage(text) {
 
 function addTyping() {
   const msgs = document.getElementById('chat-messages');
-  const div  = document.createElement('div');
+  const div = document.createElement('div');
   div.className = 'msg assistant';
   div.id = 'typing-indicator';
   div.innerHTML = `<div class="typing"><span></span><span></span><span></span></div>`;
@@ -594,21 +614,21 @@ function addTyping() {
 
 // ── Command System ────────────────────────────────────────────────────────────
 const COMMANDS = {
-  '!help':        'Show all available commands',
-  '!block':       '!block <ip> [device_id] — Block IP on device (default: ubuntu-main)',
-  '!ratelimit':   '!ratelimit <ip> [limit] [device_id] — Rate limit SSH (Linux only, default 3/min)',
-  '!unblock':     '!unblock <ip> — Remove block or rate limit from IP',
+  '!help': 'Show all available commands',
+  '!block': '!block <ip> [device_id] — Block IP on device (default: ubuntu-main)',
+  '!ratelimit': '!ratelimit <ip> [limit] [device_id] — Rate limit SSH (Linux only, default 3/min)',
+  '!unblock': '!unblock <ip> — Remove block or rate limit from IP',
   '!updatelimit': '!updatelimit <ip> <new_limit> [device_id] — Change rate limit',
-  '!status':      '!status <ip> — Show current rules for an IP',
+  '!status': '!status <ip> — Show current rules for an IP',
   '!listblocked': '!listblocked — Show all managed IPs',
   '!listdevices': '!listdevices — Show all connected devices and their IDs',
-  '!clearall':    '!clearall — Remove ALL SOC-X managed rules (use with caution)',
+  '!clearall': '!clearall — Remove ALL SOC-X managed rules (use with caution)',
 };
 
 async function processCommand(input) {
-  const parts  = input.trim().split(/\s+/);
-  const cmd    = parts[0].toLowerCase();
-  const args   = parts.slice(1);
+  const parts = input.trim().split(/\s+/);
+  const cmd = parts[0].toLowerCase();
+  const args = parts.slice(1);
 
   // Show help
   if (cmd === '!help') {
@@ -640,14 +660,14 @@ async function processCommand(input) {
   // List blocked IPs
   if (cmd === '!listblocked') {
     try {
-      const res  = await fetch('/api/managed_ips');
+      const res = await fetch('/api/managed_ips');
       const data = await res.json();
-      const ips  = data.managed_ips;
+      const ips = data.managed_ips;
       if (ips.length === 0) {
         appendCommandResult('No managed IPs.', 'info');
         return true;
       }
-      const active   = ips.filter(i => i.active);
+      const active = ips.filter(i => i.active);
       const inactive = ips.filter(i => !i.active);
       const lines = [
         `📋 MANAGED IPs (${active.length} active, ${inactive.length} removed)`,
@@ -658,7 +678,7 @@ async function processCommand(input) {
         ...(inactive.length ? ['─────────────────────────────', ...inactive.map(i => `⚪ ${i.ip} — REMOVED`)] : []),
       ];
       appendCommandResult(lines.join('<br>'), 'info');
-    } catch(e) {
+    } catch (e) {
       appendCommandResult('❌ Failed to fetch managed IPs: ' + e.message, 'error');
     }
     return true;
@@ -667,7 +687,7 @@ async function processCommand(input) {
   // List devices
   if (cmd === '!listdevices') {
     try {
-      const res  = await fetch('/api/devices');
+      const res = await fetch('/api/devices');
       const data = await res.json();
       if (data.devices.length === 0) {
         appendCommandResult('No devices registered.', 'info');
@@ -684,7 +704,7 @@ async function processCommand(input) {
         'Use device ID with <code>!block</code> to target specific device',
       ];
       appendCommandResult(lines.join('<br>'), 'info');
-    } catch(e) {
+    } catch (e) {
       appendCommandResult('❌ Error: ' + e.message, 'error');
     }
     return true;
@@ -695,7 +715,7 @@ async function processCommand(input) {
     const ip = args[0];
     if (!ip) { appendCommandResult('Usage: !status <ip>', 'error'); return true; }
     try {
-      const res  = await fetch('/api/managed_ips');
+      const res = await fetch('/api/managed_ips');
       const data = await res.json();
       const entry = data.managed_ips.find(i => i.ip === ip);
       if (!entry) {
@@ -712,7 +732,7 @@ async function processCommand(input) {
         `Active: ${entry.active ? '✅ Yes' : '❌ Removed'}`,
       ].filter(Boolean);
       appendCommandResult(lines.join('<br>'), 'info');
-    } catch(e) {
+    } catch (e) {
       appendCommandResult('❌ Error: ' + e.message, 'error');
     }
     return true;
@@ -720,29 +740,29 @@ async function processCommand(input) {
 
   // Block IP
   if (cmd === '!block') {
-    const ip       = args[0];
+    const ip = args[0];
     const deviceId = args[1] || 'ubuntu-main';
     if (!ip) { appendCommandResult('Usage: !block <ip> [device_id]<br>Example: <code>!block 1.2.3.4 fortigate-main</code>', 'error'); return true; }
     if (!isValidIP(ip)) { appendCommandResult(`❌ Invalid IP: ${ip}`, 'error'); return true; }
 
     // Show device-specific message
     const deviceMsgs = {
-      'ubuntu-main':    'Ubuntu (iptables + ufw)',
+      'ubuntu-main': 'Ubuntu (iptables + ufw)',
       'fortigate-main': 'Fortigate (address object)',
     };
     const devLabel = deviceMsgs[deviceId] || deviceId;
     appendCommandResult(`⏳ Blocking <strong>${ip}</strong> on ${devLabel}...`, 'info');
 
     try {
-      const res  = await fetch('/api/remediate', {
+      const res = await fetch('/api/remediate', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ip, device_id: deviceId, mode: 'block' })
       });
       const data = await res.json();
       if (data.success) {
         const deviceType = deviceId.includes('fortigate') ? 'Fortigate' :
-                           deviceId.includes('cisco')     ? 'Cisco' : 'Linux';
+          deviceId.includes('cisco') ? 'Cisco' : 'Linux';
         appendCommandResult(
           `✅ <strong>${ip}</strong> BLOCKED on ${devLabel}<br>` +
           `Device type: ${deviceType}<br>` +
@@ -753,7 +773,7 @@ async function processCommand(input) {
       } else {
         appendCommandResult(`❌ Block failed on ${devLabel}: ${data.message}`, 'error');
       }
-    } catch(e) {
+    } catch (e) {
       appendCommandResult('❌ Error: ' + e.message, 'error');
     }
     return true;
@@ -761,16 +781,16 @@ async function processCommand(input) {
 
   // Rate limit IP
   if (cmd === '!ratelimit') {
-    const ip       = args[0];
+    const ip = args[0];
     const hitcount = parseInt(args[1]) || 3;
     const deviceId = args[2] || 'ubuntu-main';
     if (!ip) { appendCommandResult('Usage: !ratelimit <ip> [limit] [device_id]', 'error'); return true; }
     if (!isValidIP(ip)) { appendCommandResult(`❌ Invalid IP: ${ip}`, 'error'); return true; }
     appendCommandResult(`⏳ Rate-limiting <strong>${ip}</strong> to ${hitcount}/min on ${deviceId}...`, 'info');
     try {
-      const res  = await fetch('/api/remediate', {
+      const res = await fetch('/api/remediate', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ip, device_id: deviceId, mode: 'ratelimit', hitcount })
       });
       const data = await res.json();
@@ -780,7 +800,7 @@ async function processCommand(input) {
       } else {
         appendCommandResult(`❌ Rate-limit failed: ${data.message}`, 'error');
       }
-    } catch(e) {
+    } catch (e) {
       appendCommandResult('❌ Error: ' + e.message, 'error');
     }
     return true;
@@ -793,7 +813,7 @@ async function processCommand(input) {
     if (!isValidIP(ip)) { appendCommandResult(`❌ Invalid IP: ${ip}`, 'error'); return true; }
     appendCommandResult(`⏳ Removing rules for <strong>${ip}</strong>...`, 'info');
     try {
-      const res  = await fetch(`/api/managed_ips/${ip}`, { method: 'DELETE' });
+      const res = await fetch(`/api/managed_ips/${ip}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
         appendCommandResult(`✅ <strong>${ip}</strong> UNBLOCKED — all rules removed<br>${data.message}`, 'success');
@@ -801,7 +821,7 @@ async function processCommand(input) {
       } else {
         appendCommandResult(`❌ Unblock failed: ${data.error || data.message}`, 'error');
       }
-    } catch(e) {
+    } catch (e) {
       appendCommandResult('❌ Error: ' + e.message, 'error');
     }
     return true;
@@ -809,7 +829,7 @@ async function processCommand(input) {
 
   // Update rate limit
   if (cmd === '!updatelimit') {
-    const ip       = args[0];
+    const ip = args[0];
     const hitcount = parseInt(args[1]);
     const deviceId = args[2] || 'ubuntu-main';
     if (!ip || !hitcount) { appendCommandResult('Usage: !updatelimit <ip> <new_limit> [device_id]', 'error'); return true; }
@@ -820,9 +840,9 @@ async function processCommand(input) {
       // Remove old rule first
       await fetch(`/api/managed_ips/${ip}`, { method: 'DELETE' });
       // Apply new limit
-      const res  = await fetch('/api/remediate', {
+      const res = await fetch('/api/remediate', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ip, device_id: deviceId, mode: 'ratelimit', hitcount })
       });
       const data = await res.json();
@@ -832,7 +852,7 @@ async function processCommand(input) {
       } else {
         appendCommandResult(`❌ Update failed: ${data.message}`, 'error');
       }
-    } catch(e) {
+    } catch (e) {
       appendCommandResult('❌ Error: ' + e.message, 'error');
     }
     return true;
@@ -842,7 +862,7 @@ async function processCommand(input) {
   if (cmd === '!clearall') {
     appendCommandResult('⏳ Removing all SOC-X managed rules...', 'info');
     try {
-      const res  = await fetch('/api/managed_ips');
+      const res = await fetch('/api/managed_ips');
       const data = await res.json();
       const active = data.managed_ips.filter(i => i.active);
       if (active.length === 0) {
@@ -857,7 +877,7 @@ async function processCommand(input) {
       }
       appendCommandResult(`✅ Removed ${removed}/${active.length} rules.`, 'success');
       pollManagedIPs();
-    } catch(e) {
+    } catch (e) {
       appendCommandResult('❌ Error: ' + e.message, 'error');
     }
     return true;
@@ -872,7 +892,7 @@ function isValidIP(ip) {
 
 function appendCommandResult(html, type) {
   const msgs = document.getElementById('chat-messages');
-  const div  = document.createElement('div');
+  const div = document.createElement('div');
   div.className = 'msg cmd-result';
   const colors = { success: '#00e676', error: '#ff1744', info: '#00e5ff' };
   div.innerHTML = `
@@ -886,7 +906,7 @@ function appendCommandResult(html, type) {
 
 async function sendMessage() {
   const input = document.getElementById('chat-input');
-  const msg   = input.value.trim();
+  const msg = input.value.trim();
   if (!msg || isStreaming) return;
 
   input.value = '';
@@ -906,13 +926,13 @@ async function sendMessage() {
   try {
     const res = await fetch('/api/chat', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: msg, session_id: sessionId })
     });
     const data = await res.json();
     saveSession(data.session_id);
     await streamResponse();
-  } catch(e) {
+  } catch (e) {
     addMessage('assistant', 'Error connecting to SOC AI: ' + e.message);
   }
 }
@@ -922,14 +942,14 @@ async function streamResponse() {
   document.getElementById('send-btn').disabled = true;
 
   const typing = addTyping();
-  const msgs   = document.getElementById('chat-messages');
+  const msgs = document.getElementById('chat-messages');
 
   try {
     const res = await fetch(`/api/stream?session_id=${sessionId}`);
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
 
-    let aiDiv  = null;
+    let aiDiv = null;
     let buffer = '';
 
     while (true) {
@@ -957,10 +977,10 @@ async function streamResponse() {
             saveChatToStorage();
             break;
           }
-        } catch(e) {}
+        } catch (e) { }
       }
     }
-  } catch(e) {
+  } catch (e) {
     typing.remove();
     addMessage('assistant', 'Stream error: ' + e.message);
   }
@@ -985,7 +1005,7 @@ async function resetChat() {
   if (sessionId) {
     await fetch('/api/reset', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ session_id: sessionId })
     });
   }
@@ -1022,20 +1042,20 @@ function updatePlaceholders() {
   const hint = document.getElementById('dev-hint');
   const secretRow = document.getElementById('secret-row');
   const hints = {
-    cisco_ios:  "Cisco IOS: SOC-X SSHes in and runs 'show logging' every 30s. Enter enable secret if required.",
-    fortigate:  "Fortigate: Make sure syslog push is configured on the device (config log syslogd setting). Adding here registers credentials for auto-block functionality.",
-    linux:      "Linux: SOC-X tails auth.log, ufw.log, syslog and kern.log via SSH in real-time.",
+    cisco_ios: "Cisco IOS: SOC-X SSHes in and runs 'show logging' every 30s. Enter enable secret if required.",
+    fortigate: "Fortigate: Make sure syslog push is configured on the device (config log syslogd setting). Adding here registers credentials for auto-block functionality.",
+    linux: "Linux: SOC-X tails auth.log, ufw.log, syslog and kern.log via SSH in real-time.",
   };
   hint.textContent = hints[type] || '';
   secretRow.style.display = type === 'cisco_ios' ? 'flex' : 'none';
 }
 
 async function addDevice() {
-  const type   = document.getElementById('dev-type').value;
-  const name   = document.getElementById('dev-name').value.trim();
-  const host   = document.getElementById('dev-host').value.trim();
-  const user   = document.getElementById('dev-user').value.trim();
-  const pass   = document.getElementById('dev-pass').value.trim();
+  const type = document.getElementById('dev-type').value;
+  const name = document.getElementById('dev-name').value.trim();
+  const host = document.getElementById('dev-host').value.trim();
+  const user = document.getElementById('dev-user').value.trim();
+  const pass = document.getElementById('dev-pass').value.trim();
   const secret = document.getElementById('dev-secret').value.trim();
 
   if (!host || !user || !pass) {
@@ -1048,9 +1068,9 @@ async function addDevice() {
   btn.disabled = true;
 
   try {
-    const res  = await fetch('/api/devices', {
+    const res = await fetch('/api/devices', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type, name, host, username: user, password: pass, secret })
     });
     const data = await res.json();
@@ -1061,7 +1081,7 @@ async function addDevice() {
     } else {
       showDeviceResult(`❌ ${data.error || 'Failed to add device'}`, false);
     }
-  } catch(e) {
+  } catch (e) {
     showDeviceResult('❌ Connection error: ' + e.message, false);
   }
 
@@ -1124,10 +1144,10 @@ function closeIPManagerOutside(e) {
 
 async function refreshManagedIPs() {
   try {
-    const res  = await fetch('/api/managed_ips');
+    const res = await fetch('/api/managed_ips');
     const data = await res.json();
     const list = document.getElementById('managed-ip-list');
-    const ips  = data.managed_ips;
+    const ips = data.managed_ips;
 
     // Update count badge
     const active = ips.filter(i => i.active);
@@ -1158,7 +1178,7 @@ async function refreshManagedIPs() {
             <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
               <span style="font-family:var(--font-mono);font-size:10px;color:var(--text2);">MAX CONNECTIONS/60s:</span>
               <input type="number" min="1" max="20" value="${entry.hitcount || 3}"
-                id="rl-${entry.ip.replace(/\./g,'_')}"
+                id="rl-${entry.ip.replace(/\./g, '_')}"
                 style="width:44px;background:var(--panel);border:1px solid var(--yellow);color:var(--yellow);
                        font-family:var(--font-mono);font-size:11px;text-align:center;padding:2px 4px;border-radius:2px;outline:none;">
               <button class="threat-action-btn" onclick="updateRateLimit('${entry.ip}','${entry.device_id}',this)"
@@ -1173,14 +1193,14 @@ async function refreshManagedIPs() {
         </div>
       </div>
     `).join('');
-  } catch(e) {
+  } catch (e) {
     console.error('Managed IPs error:', e);
   }
 }
 
 async function updateRateLimit(ip, deviceId, btn) {
   const safeIp = ip.replace(/\./g, '_');
-  const input  = document.getElementById(`rl-${safeIp}`);
+  const input = document.getElementById(`rl-${safeIp}`);
   const hitcount = Math.max(1, Math.min(20, parseInt(input?.value) || 3));
 
   btn.disabled = true;
@@ -1189,9 +1209,9 @@ async function updateRateLimit(ip, deviceId, btn) {
   try {
     // First unblock current rule, then re-apply with new hitcount
     await fetch(`/api/managed_ips/${ip}`, { method: 'DELETE' });
-    const res  = await fetch('/api/remediate', {
+    const res = await fetch('/api/remediate', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ip, device_id: deviceId, mode: 'ratelimit', hitcount })
     });
     const data = await res.json();
@@ -1204,7 +1224,7 @@ async function updateRateLimit(ip, deviceId, btn) {
       btn.textContent = '❌ FAIL';
       btn.disabled = false;
     }
-  } catch(e) {
+  } catch (e) {
     btn.textContent = '❌ ERR';
     btn.disabled = false;
   }
@@ -1214,7 +1234,7 @@ async function unblockIP(ip, btn) {
   btn.disabled = true;
   btn.textContent = '⏳...';
   try {
-    const res  = await fetch(`/api/managed_ips/${ip}`, { method: 'DELETE' });
+    const res = await fetch(`/api/managed_ips/${ip}`, { method: 'DELETE' });
     const data = await res.json();
     if (data.success) {
       btn.textContent = '✅ DONE';
@@ -1225,7 +1245,7 @@ async function unblockIP(ip, btn) {
       btn.textContent = '❌ FAILED';
       btn.disabled = false;
     }
-  } catch(e) {
+  } catch (e) {
     btn.textContent = '❌ ERROR';
     btn.disabled = false;
   }
@@ -1234,7 +1254,7 @@ async function unblockIP(ip, btn) {
 // Poll managed IPs count badge every 10s
 async function pollManagedIPs() {
   try {
-    const res  = await fetch('/api/managed_ips');
+    const res = await fetch('/api/managed_ips');
     const data = await res.json();
     const active = data.managed_ips.filter(i => i.active);
     const countEl = document.getElementById('managed-ip-count');
@@ -1244,7 +1264,7 @@ async function pollManagedIPs() {
     } else {
       countEl.style.display = 'none';
     }
-  } catch(e) {}
+  } catch (e) { }
 }
 
 // ── Start Polling ─────────────────────────────────────────────────────────────
@@ -1253,9 +1273,9 @@ pollEvents();
 pollStatus();
 pollDevices();
 
-setInterval(pollEvents,       2000);
-setInterval(pollStatus,       5000);
-setInterval(pollAlerts,       3000);
+setInterval(pollEvents, 2000);
+setInterval(pollStatus, 5000);
+setInterval(pollAlerts, 3000);
 setInterval(pollActiveAlerts, 2000);
-setInterval(pollDevices,      8000);
-setInterval(pollManagedIPs,   10000);
+setInterval(pollDevices, 8000);
+setInterval(pollManagedIPs, 10000);
