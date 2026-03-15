@@ -1,1187 +1,301 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SOC-X — Security Operations Center</title>
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg:        #020608;
-    --bg2:       #040d12;
-    --bg3:       #071520;
-    --panel:     #081a26;
-    --border:    #0e3a52;
-    --border2:   #0a2535;
-    --cyan:      #00e5ff;
-    --cyan2:     #00b8d4;
-    --cyan-dim:  #004d6b;
-    --red:       #ff1744;
-    --red-dim:   #4a0010;
-    --orange:    #ff6d00;
-    --orange-dim:#3d1a00;
-    --yellow:    #ffd600;
-    --yellow-dim:#3d3300;
-    --green:     #00e676;
-    --green-dim: #003d1a;
-    --grey:      #546e7a;
-    --text:      #b0bec5;
-    --text2:     #78909c;
-    --white:     #eceff1;
-    --font-mono: 'Share Tech Mono', monospace;
-    --font-head: 'Orbitron', monospace;
-    --font-body: 'Rajdhani', sans-serif;
-  }
-
-  * { margin:0; padding:0; box-sizing:border-box; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--font-body);
-    font-size: 14px;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* Scanline overlay */
-  body::before {
-    content:'';
-    position:fixed; inset:0;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0,229,255,0.015) 2px,
-      rgba(0,229,255,0.015) 4px
-    );
-    pointer-events:none;
-    z-index:9999;
-  }
-
-  /* Grid background */
-  body::after {
-    content:'';
-    position:fixed; inset:0;
-    background-image:
-      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
-    background-size: 40px 40px;
-    pointer-events:none;
-    z-index:0;
-  }
-
-  /* ── HEADER ── */
-  header {
-    position: relative;
-    z-index: 10;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 24px;
-    background: linear-gradient(180deg, #030f18 0%, transparent 100%);
-    border-bottom: 1px solid var(--border);
-    gap: 16px;
-  }
-
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .logo-icon {
-    width: 36px; height: 36px;
-    border: 2px solid var(--cyan);
-    border-radius: 4px;
-    display: flex; align-items: center; justify-content: center;
-    position: relative;
-    box-shadow: 0 0 16px rgba(0,229,255,0.4), inset 0 0 8px rgba(0,229,255,0.1);
-    animation: pulse-border 2s ease-in-out infinite;
-  }
-
-  @keyframes pulse-border {
-    0%,100% { box-shadow: 0 0 16px rgba(0,229,255,0.4), inset 0 0 8px rgba(0,229,255,0.1); }
-    50%      { box-shadow: 0 0 28px rgba(0,229,255,0.7), inset 0 0 14px rgba(0,229,255,0.2); }
-  }
-
-  .logo-icon svg { width:20px; height:20px; }
-
-  .logo-text {
-    font-family: var(--font-head);
-    font-size: 20px;
-    font-weight: 900;
-    color: var(--cyan);
-    letter-spacing: 4px;
-    text-shadow: 0 0 20px rgba(0,229,255,0.6);
-  }
-
-  .logo-sub {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--text2);
-    letter-spacing: 2px;
-    margin-top: 2px;
-  }
-
-  .header-stats {
-    display: flex;
-    gap: 6px;
-    flex: 1;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  .hstat {
-    background: var(--panel);
-    border: 1px solid var(--border2);
-    padding: 6px 14px;
-    border-radius: 3px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    min-width: 90px;
-  }
-
-  .hstat-val {
-    font-size: 20px;
-    font-weight: 700;
-    line-height: 1;
-    font-family: var(--font-head);
-  }
-
-  .hstat-lbl { color: var(--text2); font-size: 9px; letter-spacing: 1px; }
-  .hstat.critical .hstat-val { color: var(--red); text-shadow: 0 0 10px rgba(255,23,68,0.5); }
-  .hstat.high     .hstat-val { color: var(--orange); }
-  .hstat.medium   .hstat-val { color: var(--yellow); }
-  .hstat.total    .hstat-val { color: var(--cyan); }
-  .hstat.ips      .hstat-val { color: var(--green); }
-
-  .header-right {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .clock {
-    font-family: var(--font-mono);
-    font-size: 13px;
-    color: var(--cyan);
-    text-shadow: 0 0 8px rgba(0,229,255,0.4);
-    letter-spacing: 2px;
-  }
-
-  .live-badge {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(0,230,118,0.1);
-    border: 1px solid var(--green);
-    padding: 4px 10px;
-    border-radius: 2px;
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--green);
-    letter-spacing: 2px;
-  }
-
-  .live-dot {
-    width: 6px; height: 6px;
-    background: var(--green);
-    border-radius: 50%;
-    animation: blink 1s ease-in-out infinite;
-    box-shadow: 0 0 6px var(--green);
-  }
-
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
-
-  /* ── SOURCE STATUS BAR ── */
-  .source-bar {
-    position: relative; z-index: 10;
-    display: flex;
-    gap: 6px;
-    padding: 8px 24px;
-    background: var(--bg2);
-    border-bottom: 1px solid var(--border2);
-    overflow-x: auto;
-  }
-
-  .source-pill {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 12px;
-    border-radius: 2px;
-    font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 1px;
-    border: 1px solid transparent;
-    white-space: nowrap;
-    transition: all 0.3s;
-  }
-
-  .source-pill.connected {
-    background: rgba(0,230,118,0.08);
-    border-color: rgba(0,230,118,0.3);
-    color: var(--green);
-  }
-
-  .source-pill.disconnected {
-    background: rgba(255,23,68,0.08);
-    border-color: rgba(255,23,68,0.3);
-    color: var(--red);
-  }
-
-  .source-dot {
-    width: 5px; height: 5px;
-    border-radius: 50%;
-    animation: blink 1.5s ease-in-out infinite;
-  }
-
-  .connected .source-dot { background: var(--green); box-shadow: 0 0 4px var(--green); }
-  .disconnected .source-dot { background: var(--red); animation: none; }
-
-  /* ── MAIN LAYOUT ── */
-  .main {
-    position: relative; z-index: 10;
-    display: grid;
-    grid-template-columns: 1fr 380px;
-    grid-template-rows: 1fr;
-    height: calc(100vh - 100px);
-    gap: 0;
-  }
-
-  /* ── LEFT PANEL — Events ── */
-  .events-panel {
-    display: flex;
-    flex-direction: column;
-    border-right: 1px solid var(--border2);
-    overflow: hidden;
-  }
-
-  .panel-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 16px;
-    background: var(--bg2);
-    border-bottom: 1px solid var(--border2);
-    flex-shrink: 0;
-  }
-
-  .panel-title {
-    font-family: var(--font-head);
-    font-size: 11px;
-    letter-spacing: 3px;
-    color: var(--cyan);
-  }
-
-  .filters {
-    display: flex;
-    gap: 4px;
-  }
-
-  .filter-btn {
-    padding: 3px 10px;
-    border-radius: 2px;
-    font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 1px;
-    cursor: pointer;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--text2);
-    transition: all 0.2s;
-  }
-
-  .filter-btn:hover, .filter-btn.active {
-    background: var(--cyan-dim);
-    border-color: var(--cyan);
-    color: var(--cyan);
-  }
-
-  .filter-btn.f-critical.active { background: var(--red-dim); border-color: var(--red); color: var(--red); }
-  .filter-btn.f-high.active     { background: var(--orange-dim); border-color: var(--orange); color: var(--orange); }
-  .filter-btn.f-medium.active   { background: var(--yellow-dim); border-color: var(--yellow); color: var(--yellow); }
-
-  /* Events list */
-  .events-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0;
-  }
-
-  .events-list::-webkit-scrollbar { width: 4px; }
-  .events-list::-webkit-scrollbar-track { background: var(--bg2); }
-  .events-list::-webkit-scrollbar-thumb { background: var(--cyan-dim); border-radius: 2px; }
-
-  .event-row {
-    display: grid;
-    grid-template-columns: 70px 80px 130px 1fr 90px;
-    gap: 8px;
-    align-items: center;
-    padding: 8px 16px;
-    border-bottom: 1px solid rgba(14,58,82,0.4);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    cursor: pointer;
-    transition: background 0.15s;
-    animation: slideIn 0.3s ease-out;
-  }
-
-  @keyframes slideIn {
-    from { opacity:0; transform: translateX(-10px); }
-    to   { opacity:1; transform: translateX(0); }
-  }
-
-  .event-row:hover { background: rgba(0,229,255,0.04); }
-  .event-row.new-event { animation: flashNew 0.6s ease-out; }
-
-  @keyframes flashNew {
-    0%   { background: rgba(0,229,255,0.15); }
-    100% { background: transparent; }
-  }
-
-  .ev-time { color: var(--text2); font-size: 10px; }
-
-  .ev-sev {
-    padding: 2px 6px;
-    border-radius: 2px;
-    font-size: 9px;
-    letter-spacing: 1px;
-    text-align: center;
-    font-weight: 700;
-  }
-
-  .sev-CRITICAL { background: var(--red-dim);    color: var(--red);    border: 1px solid var(--red);    box-shadow: 0 0 6px rgba(255,23,68,0.3); }
-  .sev-HIGH     { background: var(--orange-dim); color: var(--orange); border: 1px solid var(--orange); }
-  .sev-MEDIUM   { background: var(--yellow-dim); color: var(--yellow); border: 1px solid var(--yellow); }
-  .sev-LOW      { background: var(--green-dim);  color: var(--green);  border: 1px solid var(--green); }
-  .sev-INFO     { background: rgba(84,110,122,0.2); color: var(--grey); border: 1px solid var(--grey); }
-
-  .ev-type { color: var(--white); font-size: 10px; letter-spacing: 1px; }
-  .ev-desc { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
-  .ev-src  { color: var(--cyan2); font-size: 9px; text-align: right; }
-
-  /* ── RIGHT PANEL — Chat ── */
-  .chat-panel {
-    display: flex;
-    flex-direction: column;
-    background: var(--bg2);
-    overflow: hidden;
-  }
-
-  .chat-messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .chat-messages::-webkit-scrollbar { width: 3px; }
-  .chat-messages::-webkit-scrollbar-thumb { background: var(--cyan-dim); }
-
-  .msg {
-    max-width: 92%;
-    animation: msgIn 0.2s ease-out;
-  }
-
-  @keyframes msgIn {
-    from { opacity:0; transform: translateY(6px); }
-    to   { opacity:1; transform: translateY(0); }
-  }
-
-  .msg.user { align-self: flex-end; }
-  .msg.assistant { align-self: flex-start; }
-  .msg.alert-msg { align-self: flex-start; width: 100%; max-width: 100%; }
-
-  .msg-bubble {
-    padding: 10px 14px;
-    border-radius: 3px;
-    font-family: var(--font-body);
-    font-size: 13px;
-    line-height: 1.6;
-    white-space: pre-wrap;
-    word-break: break-word;
-  }
-
-  .user .msg-bubble {
-    background: var(--cyan-dim);
-    border: 1px solid var(--cyan);
-    color: var(--white);
-    font-family: var(--font-mono);
-    font-size: 12px;
-  }
-
-  .assistant .msg-bubble {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    color: var(--text);
-  }
-
-  .alert-msg .msg-bubble {
-    background: rgba(255,23,68,0.07);
-    border: 1px solid var(--red);
-    color: var(--white);
-    box-shadow: 0 0 20px rgba(255,23,68,0.15);
-  }
-
-  .msg-label {
-    font-family: var(--font-mono);
-    font-size: 9px;
-    letter-spacing: 2px;
-    margin-bottom: 4px;
-    padding: 0 4px;
-  }
-
-  .user .msg-label     { color: var(--cyan); text-align: right; }
-  .assistant .msg-label { color: var(--text2); }
-  .alert-msg .msg-label { color: var(--red); }
-
-  .chat-input-area {
-    padding: 12px;
-    border-top: 1px solid var(--border2);
-    background: var(--bg3);
-    flex-shrink: 0;
-  }
-
-  .chat-input-row {
-    display: flex;
-    gap: 8px;
-    align-items: flex-end;
-  }
-
-  .chat-input {
-    flex: 1;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    color: var(--white);
-    font-family: var(--font-mono);
-    font-size: 12px;
-    padding: 10px 12px;
-    border-radius: 3px;
-    resize: none;
-    min-height: 40px;
-    max-height: 100px;
-    transition: border-color 0.2s;
-    outline: none;
-  }
-
-  .chat-input:focus { border-color: var(--cyan); box-shadow: 0 0 8px rgba(0,229,255,0.2); }
-  .chat-input::placeholder { color: var(--text2); }
-
-  .send-btn {
-    background: var(--cyan-dim);
-    border: 1px solid var(--cyan);
-    color: var(--cyan);
-    padding: 10px 16px;
-    border-radius: 3px;
-    cursor: pointer;
-    font-family: var(--font-head);
-    font-size: 11px;
-    letter-spacing: 2px;
-    transition: all 0.2s;
-    white-space: nowrap;
-  }
-
-  .send-btn:hover { background: var(--cyan); color: var(--bg); }
-  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-  /* ── THREAT ALERT POPUP ── */
-  .alert-popup {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    width: 360px;
-    z-index: 9998;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    pointer-events: none;
-  }
-
-  .threat-card {
-    background: #0d0205;
-    border: 1px solid var(--red);
-    border-left: 4px solid var(--red);
-    padding: 14px 16px;
-    border-radius: 3px;
-    box-shadow: 0 0 30px rgba(255,23,68,0.25), 0 4px 20px rgba(0,0,0,0.5);
-    pointer-events: all;
-    cursor: pointer;
-    animation: threatSlide 0.4s cubic-bezier(0.16,1,0.3,1);
-    transition: transform 0.2s;
-  }
-
-  .threat-card:hover { transform: scale(1.02); }
-
-  @keyframes threatSlide {
-    from { opacity:0; transform: translateX(20px) scale(0.95); }
-    to   { opacity:1; transform: translateX(0) scale(1); }
-  }
-
-  .threat-card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 8px;
-  }
-
-  .threat-type {
-    font-family: var(--font-head);
-    font-size: 11px;
-    color: var(--red);
-    letter-spacing: 2px;
-  }
-
-  .threat-sev {
-    font-family: var(--font-mono);
-    font-size: 9px;
-    padding: 2px 8px;
-    background: var(--red-dim);
-    border: 1px solid var(--red);
-    color: var(--red);
-    border-radius: 2px;
-    animation: blink 0.8s ease-in-out infinite;
-  }
-
-  .threat-ip {
-    font-family: var(--font-mono);
-    font-size: 13px;
-    color: var(--white);
-    margin-bottom: 4px;
-  }
-
-  .threat-detail {
-    font-family: var(--font-body);
-    font-size: 12px;
-    color: var(--text);
-    line-height: 1.4;
-    margin-bottom: 8px;
-  }
-
-  .threat-action-btn {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--red);
-    border: 1px solid rgba(255,23,68,0.4);
-    background: transparent;
-    padding: 4px 10px;
-    border-radius: 2px;
-    cursor: pointer;
-    letter-spacing: 1px;
-    transition: all 0.2s;
-  }
-
-  .threat-action-btn:hover { background: var(--red); color: white; }
-
-  .threat-kill-chain {
-    font-family: var(--font-mono);
-    font-size: 9px;
-    color: var(--orange);
-    letter-spacing: 1px;
-    margin-top: 6px;
-  }
-
-  /* ── TYPING INDICATOR ── */
-  .typing {
-    display: flex;
-    gap: 4px;
-    padding: 12px 14px;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    width: fit-content;
-  }
-
-  .typing span {
-    width: 6px; height: 6px;
-    background: var(--cyan);
-    border-radius: 50%;
-    animation: typing 1.2s ease-in-out infinite;
-  }
-
-  .typing span:nth-child(2) { animation-delay: 0.2s; }
-  .typing span:nth-child(3) { animation-delay: 0.4s; }
-
-  @keyframes typing {
-    0%,60%,100% { transform: translateY(0); opacity:0.4; }
-    30%          { transform: translateY(-6px); opacity:1; }
-  }
-
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 4px; height: 4px; }
-  ::-webkit-scrollbar-track { background: var(--bg2); }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-  /* No events state */
-  .no-events {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 200px;
-    color: var(--text2);
-    gap: 8px;
-    font-family: var(--font-mono);
-    font-size: 12px;
-    letter-spacing: 2px;
-  }
-
-  .no-events svg { opacity: 0.3; }
-
-  /* Column headers */
-  .col-headers {
-    display: grid;
-    grid-template-columns: 70px 80px 130px 1fr 90px;
-    gap: 8px;
-    padding: 6px 16px;
-    background: var(--bg3);
-    border-bottom: 1px solid var(--border2);
-    font-family: var(--font-mono);
-    font-size: 9px;
-    color: var(--text2);
-    letter-spacing: 2px;
-    flex-shrink: 0;
-  }
-
-  /* Threat counter badge */
-  .threat-badge {
-    background: var(--red);
-    color: white;
-    border-radius: 50%;
-    width: 16px; height: 16px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 9px;
-    font-weight: 700;
-    margin-left: 6px;
-    animation: blink 1s ease-in-out infinite;
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CYBRIX — Security Operations Center</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;700;900&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+
 <body>
 
-<!-- HEADER -->
-<header>
-  <div class="logo">
-    <div class="logo-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="2">
-        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-      </svg>
-    </div>
-    <div>
-      <div class="logo-text">SOC-X</div>
-      <div class="logo-sub">SECURITY OPERATIONS CENTER</div>
-    </div>
-  </div>
-
-  <div class="header-stats">
-    <div class="hstat total">
-      <div>
-        <div class="hstat-val" id="stat-total">0</div>
-        <div class="hstat-lbl">TOTAL EVENTS</div>
-      </div>
-    </div>
-    <div class="hstat critical">
-      <div>
-        <div class="hstat-val" id="stat-critical">0</div>
-        <div class="hstat-lbl">CRITICAL</div>
-      </div>
-    </div>
-    <div class="hstat high">
-      <div>
-        <div class="hstat-val" id="stat-high">0</div>
-        <div class="hstat-lbl">HIGH</div>
-      </div>
-    </div>
-    <div class="hstat medium">
-      <div>
-        <div class="hstat-val" id="stat-medium">0</div>
-        <div class="hstat-lbl">MEDIUM</div>
-      </div>
-    </div>
-    <div class="hstat ips">
-      <div>
-        <div class="hstat-val" id="stat-ips">0</div>
-        <div class="hstat-lbl">UNIQUE IPs</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="header-right">
-    <div class="clock" id="clock">--:--:--</div>
-    <div class="live-badge">
-      <div class="live-dot"></div>
-      LIVE
-    </div>
-  </div>
-</header>
-
-<!-- SOURCE STATUS BAR -->
-<div class="source-bar" id="source-bar">
-  <div class="source-pill disconnected" id="src-suricata">
-    <div class="source-dot"></div>SURICATA IDS
-  </div>
-  <div class="source-pill disconnected" id="src-auth">
-    <div class="source-dot"></div>AUTH.LOG
-  </div>
-  <div class="source-pill disconnected" id="src-ufw">
-    <div class="source-dot"></div>UFW FIREWALL
-  </div>
-  <div class="source-pill disconnected" id="src-kern">
-    <div class="source-dot"></div>KERN.LOG
-  </div>
-  <div class="source-pill disconnected" id="src-syslog">
-    <div class="source-dot"></div>SYSLOG
-  </div>
-</div>
-
-<!-- MAIN LAYOUT -->
-<div class="main">
-
-  <!-- LEFT: Events Panel -->
-  <div class="events-panel">
-    <div class="panel-header">
-      <div class="panel-title">▶ LIVE EVENT STREAM</div>
-      <div class="filters">
-        <button class="filter-btn active" onclick="setFilter('ALL')">ALL</button>
-        <button class="filter-btn f-critical" onclick="setFilter('CRITICAL')">CRITICAL</button>
-        <button class="filter-btn f-high" onclick="setFilter('HIGH')">HIGH</button>
-        <button class="filter-btn f-medium" onclick="setFilter('MEDIUM')">MEDIUM</button>
-      </div>
-    </div>
-    <div class="col-headers">
-      <span>TIME</span>
-      <span>SEVERITY</span>
-      <span>TYPE</span>
-      <span>DESCRIPTION</span>
-      <span>SOURCE</span>
-    </div>
-    <div class="events-list" id="events-list">
-      <div class="no-events">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
         </svg>
-        AWAITING EVENTS...
+      </div>
+      <div>
+        <div class="logo-text">CYBRIX</div>
+        <div class="logo-sub">SECURITY OPERATIONS CENTER</div>
+      </div>
+    </div>
+
+    <div class="header-stats">
+      <div class="hstat total">
+        <div>
+          <div class="hstat-val" id="stat-total">0</div>
+          <div class="hstat-lbl">TOTAL EVENTS</div>
+        </div>
+      </div>
+      <div class="hstat critical">
+        <div>
+          <div class="hstat-val" id="stat-critical">0</div>
+          <div class="hstat-lbl">CRITICAL</div>
+        </div>
+      </div>
+      <div class="hstat high">
+        <div>
+          <div class="hstat-val" id="stat-high">0</div>
+          <div class="hstat-lbl">HIGH</div>
+        </div>
+      </div>
+      <div class="hstat medium">
+        <div>
+          <div class="hstat-val" id="stat-medium">0</div>
+          <div class="hstat-lbl">MEDIUM</div>
+        </div>
+      </div>
+      <div class="hstat ips">
+        <div>
+          <div class="hstat-val" id="stat-ips">0</div>
+          <div class="hstat-lbl">UNIQUE IPs</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <div class="clock" id="clock">--:--:--</div>
+      <button class="ip-manager-btn" onclick="toggleIPManager()" id="ip-manager-btn">
+        🛡 MANAGED IPs <span id="managed-ip-count"
+          style="display:none;background:var(--orange);color:white;border-radius:10px;padding:1px 6px;font-size:9px;margin-left:4px;">0</span>
+      </button>
+      <div class="live-badge">
+        <div class="live-dot"></div>
+        LIVE
+      </div>
+    </div>
+  </header>
+
+  <!-- SOURCE STATUS BAR -->
+  <div class="source-bar" id="source-bar">
+    <div class="source-pill disconnected" id="src-suricata">
+      <div class="source-dot"></div>SURICATA IDS
+    </div>
+    <div class="source-pill disconnected" id="src-auth">
+      <div class="source-dot"></div>AUTH.LOG
+    </div>
+    <div class="source-pill disconnected" id="src-ufw">
+      <div class="source-dot"></div>UFW FIREWALL
+    </div>
+    <div class="source-pill disconnected" id="src-kern">
+      <div class="source-dot"></div>KERN.LOG
+    </div>
+    <div class="source-pill disconnected" id="src-syslog">
+      <div class="source-dot"></div>SYSLOG
+    </div>
+
+    <!-- Dynamic device pills added by JS -->
+    <div id="dynamic-device-pills"></div>
+
+    <button class="add-device-btn" onclick="toggleDeviceModal()">+ ADD DEVICE</button>
+  </div>
+
+  <!-- MAIN LAYOUT -->
+  <div class="main">
+
+    <!-- LEFT: Events Panel -->
+    <div class="events-panel">
+      <div class="panel-header">
+        <div class="panel-title">▶ LIVE EVENT STREAM</div>
+        <div class="search-wrap">
+          <input type="text" id="event-search" class="event-search" placeholder="🔍 Search events..."
+            oninput="renderEvents()" autocomplete="off" />
+        </div>
+        <div class="filters">
+          <button class="filter-btn active" onclick="setFilter('ALL')">ALL</button>
+          <button class="filter-btn f-critical" onclick="setFilter('CRITICAL')">CRITICAL</button>
+          <button class="filter-btn f-high" onclick="setFilter('HIGH')">HIGH</button>
+          <button class="filter-btn f-medium" onclick="setFilter('MEDIUM')">MEDIUM</button>
+        </div>
+      </div>
+      <div class="col-headers">
+        <span>TIME</span>
+        <span>SEVERITY</span>
+        <span>TYPE</span>
+        <span>DESCRIPTION</span>
+        <span>SOURCE</span>
+      </div>
+      <div class="events-list" id="events-list">
+        <div class="no-events">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 8v4M12 16h.01" />
+          </svg>
+          AWAITING EVENTS...
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Chat Panel -->
+    <div class="chat-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          ▶ AI SOC ANALYST
+          <span id="threat-badge" class="threat-badge" style="display:none" onclick="toggleAlertsModal()"
+            title="View alert history" style="cursor:pointer">0</span>
+        </div>
+        <button class="filter-btn" onclick="resetChat()">RESET</button>
+      </div>
+
+      <div id="token-counter" style="
+        font-family: monospace;
+        font-size: 11px;
+        color: #00e5ff;
+        text-align: right;
+        padding: 4px 12px;
+        background: #030f18;
+        border-bottom: 1px solid #0e3a52;
+        letter-spacing: 1px;
+      ">TOKENS: 0 | COST: $0.00000 / $10.00</div>
+
+      <div class="chat-messages" id="chat-messages">
+        <div class="msg assistant">
+          <div class="msg-label">CYBRIX-AI</div>
+          <div class="msg-bubble">⚡ CYBRIX Online. Multi-vendor monitoring active.
+
+            Monitoring:
+            🟢 Ubuntu Linux (auth.log, UFW, Suricata) — real-time SSH tail
+            🟡 Cisco IOS devices (via netmiko SSH polling)
+            🟢 Fortigate firewall (via syslog push UDP 514)
+
+            I will automatically alert you when I detect:
+            🔴 Brute force attacks
+            🔴 Coordinated kill-chain attacks
+            🔴 Stealthy slow scans
+            🔴 Persistent threat actors
+            🔴 Privilege escalation
+
+            Ask me anything or wait for live threat alerts.</div>
+        </div>
+      </div>
+
+      <div class="chat-input-area">
+        <div class="chat-input-row">
+          <textarea class="chat-input" id="chat-input" placeholder="Ask AI anything, or type !help for commands..."
+            rows="1" onkeydown="handleKey(event)"></textarea>
+          <button class="send-btn" id="send-btn" onclick="sendMessage()">SEND</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- RIGHT: Chat Panel -->
-  <div class="chat-panel">
-    <div class="panel-header">
-      <div class="panel-title">
-        ▶ AI SOC ANALYST
-        <span id="threat-badge" class="threat-badge" style="display:none">0</span>
+  <!-- ADD DEVICE MODAL -->
+  <div class="modal-overlay" id="device-modal" style="display:none" onclick="closeModalOutside(event)">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">▶ ADD NETWORK DEVICE</div>
+        <button class="modal-close" onclick="toggleDeviceModal()">✕</button>
       </div>
-      <button class="filter-btn" onclick="resetChat()">RESET</button>
-    </div>
 
-    <div class="chat-messages" id="chat-messages">
-      <div class="msg assistant">
-        <div class="msg-label">SOC-AI</div>
-        <div class="msg-bubble">⚡ SOC-X Online. All log sources monitored in real-time.
-
-I will automatically alert you when I detect:
-🔴 Brute force attacks
-🔴 Coordinated kill-chain attacks
-🔴 Stealthy slow scans
-🔴 Persistent threat actors
-🔴 Privilege escalation
-
-Ask me anything about your infrastructure or wait for live threat alerts.</div>
+      <div class="modal-body">
+        <div class="form-row">
+          <label>DEVICE TYPE</label>
+          <select id="dev-type" onchange="updatePlaceholders()">
+            <option value="cisco_ios">Cisco IOS Router/Switch</option>
+            <option value="fortigate">Fortigate Firewall</option>
+            <option value="linux">Linux Server</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>NAME</label>
+          <input type="text" id="dev-name" placeholder="e.g. Fortigate FW" />
+        </div>
+        <div class="form-row">
+          <label>HOST / IP</label>
+          <input type="text" id="dev-host" placeholder="e.g. 192.168.108.200" />
+        </div>
+        <div class="form-row">
+          <label>USERNAME</label>
+          <input type="text" id="dev-user" placeholder="admin" />
+        </div>
+        <div class="form-row">
+          <label>PASSWORD</label>
+          <input type="password" id="dev-pass" placeholder="••••••••" />
+        </div>
+        <div class="form-row" id="secret-row">
+          <label>ENABLE SECRET <span style="color:var(--text2);font-size:10px">(Cisco only)</span></label>
+          <input type="password" id="dev-secret" placeholder="enable password (if required)" />
+        </div>
+        <div class="modal-hint" id="dev-hint">
+          Cisco IOS: SOC-X will SSH in and run "show logging" every 30s
+        </div>
       </div>
-    </div>
 
-    <div class="chat-input-area">
-      <div class="chat-input-row">
-        <textarea
-          class="chat-input"
-          id="chat-input"
-          placeholder="Ask about threats, IPs, recommended actions..."
-          rows="1"
-          onkeydown="handleKey(event)"
-        ></textarea>
-        <button class="send-btn" id="send-btn" onclick="sendMessage()">SEND</button>
+      <div class="modal-footer">
+        <button class="filter-btn" onclick="toggleDeviceModal()">CANCEL</button>
+        <button class="send-btn" onclick="addDevice()" id="add-dev-btn">CONNECT DEVICE</button>
+      </div>
+
+      <div id="add-device-result" style="padding:8px 16px;font-family:monospace;font-size:11px;display:none"></div>
+    </div>
+  </div>
+
+  <!-- ALERTS HISTORY PANEL -->
+  <div class="modal-overlay" id="alerts-modal" style="display:none" onclick="closeAlertsModalOutside(event)">
+    <div class="modal" style="width:580px;max-width:95vw;">
+      <div class="modal-header">
+        <div class="modal-title">▶ THREAT ALERT HISTORY</div>
+        <button class="modal-close" onclick="toggleAlertsModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:0;max-height:420px;overflow-y:auto;">
+        <div id="alerts-history-list" style="padding:12px;">
+          <div style="color:var(--text2);font-family:var(--font-mono);font-size:11px;text-align:center;padding:20px;">
+            No alerts yet
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="filter-btn" onclick="clearAlertHistory()">CLEAR ALL</button>
+        <button class="filter-btn" onclick="toggleAlertsModal()">CLOSE</button>
       </div>
     </div>
   </div>
-</div>
 
-<!-- THREAT ALERT POPUPS -->
-<div class="alert-popup" id="alert-popup"></div>
-
-<script>
-// ── State ────────────────────────────────────────────────────────────────────
-let sessionId   = null;
-let currentFilter = 'ALL';
-let allEvents   = [];
-let knownIds    = new Set();
-let isStreaming = false;
-let threatCount = 0;
-
-// ── Clock ────────────────────────────────────────────────────────────────────
-function updateClock() {
-  document.getElementById('clock').textContent =
-    new Date().toLocaleTimeString('en-US', {hour12: false});
-}
-setInterval(updateClock, 1000);
-updateClock();
-
-// ── Filters ──────────────────────────────────────────────────────────────────
-function setFilter(f) {
-  currentFilter = f;
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
-  renderEvents();
-}
-
-// ── Render Events ─────────────────────────────────────────────────────────────
-function severityClass(s) {
-  return `sev-${s}`;
-}
-
-function formatTime(ts) {
-  try {
-    return new Date(ts).toLocaleTimeString('en-US', {hour12: false});
-  } catch { return ts; }
-}
-
-function renderEvents() {
-  const list = document.getElementById('events-list');
-  const filtered = currentFilter === 'ALL'
-    ? allEvents
-    : allEvents.filter(e => e.severity === currentFilter);
-
-  if (filtered.length === 0) {
-    list.innerHTML = `<div class="no-events">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>
-      </svg>
-      ${currentFilter === 'ALL' ? 'AWAITING EVENTS...' : 'NO ' + currentFilter + ' EVENTS'}
-    </div>`;
-    return;
-  }
-
-  list.innerHTML = filtered.map((ev, i) => `
-    <div class="event-row ${i === 0 ? 'new-event' : ''}" onclick="askAboutEvent('${ev.id}')">
-      <span class="ev-time">${formatTime(ev.timestamp)}</span>
-      <span class="ev-sev ${severityClass(ev.severity)}">${ev.severity}</span>
-      <span class="ev-type">${ev.event_type}</span>
-      <span class="ev-desc" title="${ev.description}">${ev.description}</span>
-      <span class="ev-src">${ev.source || ''}</span>
+  <!-- IP MANAGEMENT PANEL -->
+  <div class="modal-overlay" id="ip-manager-modal" style="display:none" onclick="closeIPManagerOutside(event)">
+    <div class="modal" style="width:580px;max-width:95vw;">
+      <div class="modal-header">
+        <div class="modal-title">▶ MANAGED IPs — BLOCKED &amp; RATE-LIMITED</div>
+        <button class="modal-close" onclick="toggleIPManager()">✕</button>
+      </div>
+      <!-- Rate limit setting bar -->
+      <div
+        style="display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--bg3);border-bottom:1px solid var(--border2);">
+        <span style="font-family:var(--font-mono);font-size:10px;color:var(--text2);letter-spacing:1px;">⏱ RATE-LIMIT
+          DEFAULT:</span>
+        <input type="number" id="rl-global-setting" min="1" max="20" value="3"
+          onchange="setRateLimitSetting(this.value); this.value=getRateLimitSetting();"
+          style="width:48px;background:var(--panel);border:1px solid var(--yellow);color:var(--yellow);
+                 font-family:var(--font-mono);font-size:12px;text-align:center;padding:3px 6px;border-radius:2px;outline:none;">
+        <span style="font-family:var(--font-mono);font-size:10px;color:var(--yellow);">connections / 60s</span>
+        <span style="font-family:var(--font-mono);font-size:10px;color:var(--text2);margin-left:auto;">Applies to next ⏱
+          RATE-LIMIT action</span>
+      </div>
+      <div class="modal-body" style="padding:0;max-height:360px;overflow-y:auto;">
+        <div id="managed-ip-list" style="padding:12px;">
+          <div style="color:var(--text2);font-family:var(--font-mono);font-size:11px;text-align:center;padding:20px;">
+            No managed IPs yet
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="filter-btn" onclick="toggleIPManager()">CLOSE</button>
+        <button class="filter-btn" onclick="refreshManagedIPs()">↻ REFRESH</button>
+      </div>
     </div>
-  `).join('');
-}
+  </div>
 
-// ── Poll Events (real-time) ───────────────────────────────────────────────────
-async function pollEvents() {
-  try {
-    const res  = await fetch('/api/events?limit=200');
-    const data = await res.json();
+  <!-- THREAT ALERT POPUPS -->
+  <div class="alert-popup" id="alert-popup"></div>
 
-    // Check for new events
-    let hasNew = false;
-    for (const ev of data.events) {
-      if (!knownIds.has(ev.id)) {
-        knownIds.add(ev.id);
-        hasNew = true;
-      }
-    }
-
-    if (hasNew) {
-      allEvents = data.events;
-      renderEvents();
-    }
-
-    // Update stats
-    const s = data.stats;
-    document.getElementById('stat-total').textContent    = data.total;
-    document.getElementById('stat-critical').textContent = s.critical;
-    document.getElementById('stat-high').textContent     = s.high;
-    document.getElementById('stat-medium').textContent   = s.medium;
-    document.getElementById('stat-ips').textContent      = s.unique_ips;
-
-  } catch(e) { console.error('Poll error:', e); }
-}
-
-// ── Poll Source Status ────────────────────────────────────────────────────────
-async function pollStatus() {
-  try {
-    const res  = await fetch('/api/status');
-    const data = await res.json();
-
-    for (const [name, status] of Object.entries(data)) {
-      const el = document.getElementById(`src-${name}`);
-      if (!el) continue;
-      el.className = `source-pill ${status.connected ? 'connected' : 'disconnected'}`;
-    }
-  } catch(e) {}
-}
-
-// ── Poll Threat Alerts ────────────────────────────────────────────────────────
-async function pollAlerts() {
-  try {
-    const res  = await fetch('/api/alerts/pending');
-    const data = await res.json();
-
-    for (const item of data.alerts) {
-      showThreatPopup(item);
-      autoAlertChat(item);
-    }
-  } catch(e) {}
-}
-
-// ── Active alert cards (keyed by live_counter_key) ───────────────────────────
-const activeCards = {};
-
-// ── Show Threat Popup ─────────────────────────────────────────────────────────
-function showThreatPopup(item) {
-  const { alert } = item;
-  const key = alert.live_counter_key || `${alert.type}_${alert.ip}`;
-
-  // If card already exists for this key, don't create another
-  if (activeCards[key]) return;
-
-  threatCount++;
-  const badge = document.getElementById('threat-badge');
-  badge.style.display = 'inline-flex';
-  badge.textContent   = threatCount;
-
-  const popup = document.getElementById('alert-popup');
-  const card  = document.createElement('div');
-  card.className = 'threat-card';
-  card.id = `card-${key}`;
-  card.innerHTML = `
-    <div class="threat-card-header">
-      <div class="threat-type">⚠ ${alert.type.replace(/_/g,' ')}</div>
-      <div class="threat-sev">${alert.severity}</div>
-    </div>
-    <div class="threat-ip">🎯 ${alert.ip}</div>
-    <div class="threat-detail" id="detail-${key}">${alert.detail}</div>
-    <div class="threat-kill-chain">KILL CHAIN: ${alert.kill_chain}</div>
-    <div style="display:flex;gap:8px;margin-top:8px;align-items:center;">
-      <button class="threat-action-btn" onclick="copyCommand('${alert.action}')">COPY BLOCK COMMAND</button>
-      <button class="threat-action-btn" onclick="dismissCard('${key}')">DISMISS</button>
-    </div>
-  `;
-
-  popup.appendChild(card);
-  activeCards[key] = card;
-}
-
-function dismissCard(key) {
-  const card = activeCards[key];
-  if (card) {
-    card.style.opacity = '0';
-    card.style.transform = 'translateX(20px)';
-    card.style.transition = 'all 0.3s';
-    setTimeout(() => { card.remove(); delete activeCards[key]; }, 300);
-  }
-}
-
-// ── Poll active alert counters and update existing cards ──────────────────────
-async function pollActiveAlerts() {
-  try {
-    const res  = await fetch('/api/alerts/active');
-    const data = await res.json();
-    for (const [key, info] of Object.entries(data)) {
-      const detailEl = document.getElementById(`detail-${key}`);
-      if (detailEl) {
-        detailEl.textContent = `${info.count} failed logins in 5 minutes from ${info.ip}`;
-      }
-    }
-  } catch(e) {}
-}
-
-// ── Auto Alert Chat ───────────────────────────────────────────────────────────
-async function autoAlertChat(item) {
-  if (isStreaming) return; // Don't interrupt active chat
-
-  // Add alert message to chat
-  addAlertMessage(`⚠️ THREAT DETECTED: ${item.alert.type.replace(/_/g,' ')}\nIP: ${item.alert.ip}\n${item.alert.detail}\n\nAnalyzing threat...`);
-
-  // Get AI analysis
-  try {
-    const res = await fetch('/api/alert_chat', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        alert: item.alert,
-        event: item.event,
-        session_id: sessionId
-      })
-    });
-    const data = await res.json();
-    sessionId = data.session_id;
-    await streamResponse();
-  } catch(e) { console.error('Alert chat error:', e); }
-}
-
-// ── Chat Functions ────────────────────────────────────────────────────────────
-function addMessage(role, text) {
-  const msgs = document.getElementById('chat-messages');
-  const div  = document.createElement('div');
-  div.className = `msg ${role}`;
-  div.innerHTML = `
-    <div class="msg-label">${role === 'user' ? 'ANALYST' : 'SOC-AI'}</div>
-    <div class="msg-bubble">${text}</div>
-  `;
-  msgs.appendChild(div);
-  msgs.scrollTop = msgs.scrollHeight;
-  return div;
-}
-
-function addAlertMessage(text) {
-  const msgs = document.getElementById('chat-messages');
-  const div  = document.createElement('div');
-  div.className = 'msg alert-msg';
-  div.innerHTML = `
-    <div class="msg-label">⚠ AUTOMATED THREAT ALERT</div>
-    <div class="msg-bubble">${text}</div>
-  `;
-  msgs.appendChild(div);
-  msgs.scrollTop = msgs.scrollHeight;
-}
-
-function addTyping() {
-  const msgs = document.getElementById('chat-messages');
-  const div  = document.createElement('div');
-  div.className = 'msg assistant';
-  div.id = 'typing-indicator';
-  div.innerHTML = `<div class="typing"><span></span><span></span><span></span></div>`;
-  msgs.appendChild(div);
-  msgs.scrollTop = msgs.scrollHeight;
-  return div;
-}
-
-async function sendMessage() {
-  const input = document.getElementById('chat-input');
-  const msg   = input.value.trim();
-  if (!msg || isStreaming) return;
-
-  input.value = '';
-  addMessage('user', msg);
-
-  try {
-    const res = await fetch('/api/chat', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ message: msg, session_id: sessionId })
-    });
-    const data = await res.json();
-    sessionId = data.session_id;
-    await streamResponse();
-  } catch(e) {
-    addMessage('assistant', 'Error connecting to SOC AI: ' + e.message);
-  }
-}
-
-async function streamResponse() {
-  isStreaming = true;
-  document.getElementById('send-btn').disabled = true;
-
-  const typing = addTyping();
-  const msgs   = document.getElementById('chat-messages');
-
-  try {
-    const res = await fetch(`/api/stream?session_id=${sessionId}`);
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-
-    let aiDiv = null;
-    let buffer = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop();
-
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        try {
-          const data = JSON.parse(line.slice(6));
-          if (data.error) {
-            typing.remove();
-            addMessage('assistant', 'Error: ' + data.error);
-            break;
-          }
-          if (data.token) {
-            if (!aiDiv) {
-              typing.remove();
-              aiDiv = addMessage('assistant', '');
-            }
-            aiDiv.querySelector('.msg-bubble').textContent += data.token;
-            msgs.scrollTop = msgs.scrollHeight;
-          }
-          if (data.done) break;
-        } catch(e) {}
-      }
-    }
-  } catch(e) {
-    typing.remove();
-    addMessage('assistant', 'Stream error: ' + e.message);
-  }
-
-  isStreaming = false;
-  document.getElementById('send-btn').disabled = false;
-}
-
-function askAboutEvent(id) {
-  const ev = allEvents.find(e => e.id === id);
-  if (!ev) return;
-  const msg = `Analyze this event: [${ev.severity}] ${ev.event_type} from ${ev.source_ip} — ${ev.description}`;
-  document.getElementById('chat-input').value = msg;
-  sendMessage();
-}
-
-function handleKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
-}
-
-async function resetChat() {
-  if (sessionId) {
-    await fetch('/api/reset', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ session_id: sessionId })
-    });
-  }
-  document.getElementById('chat-messages').innerHTML = `
-    <div class="msg assistant">
-      <div class="msg-label">SOC-AI</div>
-      <div class="msg-bubble">Chat reset. Ready for new session.</div>
-    </div>`;
-  threatCount = 0;
-  document.getElementById('threat-badge').style.display = 'none';
-}
-
-function copyCommand(cmd) {
-  navigator.clipboard.writeText(cmd).then(() => {
-    alert('Command copied: ' + cmd);
-  });
-}
-
-// ── Start Polling ─────────────────────────────────────────────────────────────
-pollEvents();
-pollStatus();
-
-setInterval(pollEvents,       2000);
-setInterval(pollStatus,       5000);
-setInterval(pollAlerts,       3000);
-setInterval(pollActiveAlerts, 2000);  // Update counters on existing alert cards
-</script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
+
 </html>

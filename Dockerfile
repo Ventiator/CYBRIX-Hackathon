@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.10-slim
 
 WORKDIR /app
 
@@ -6,12 +6,15 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy app
-COPY . .
+# Copy app files
+COPY app.py .
+COPY templates/ templates/
+COPY static/ static/
 
-# Create logs directory
-RUN mkdir -p logs
+# .env is NOT copied — mount it at runtime or pass via environment variables
+# This is safer for credentials
 
 EXPOSE 5000
 
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "app:app"]
+# Use python directly (not gunicorn) to preserve background threads
+CMD ["python", "app.py"]
