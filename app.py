@@ -92,6 +92,15 @@ FORTIGATE_HOST = os.environ.get("FORTIGATE_HOST", "192.168.108.200")
 FORTIGATE_USER = os.environ.get("FORTIGATE_USER", "admin")
 FORTIGATE_PASS = os.environ.get("FORTIGATE_PASS", "Hackathon2026!")
 
+# ── Threat Intelligence & Notifications ───────────────────────────────────────
+VT_API_KEY    = os.environ.get("VT_API_KEY", "")       # VirusTotal API key
+SLACK_WEBHOOK = os.environ.get("SLACK_WEBHOOK", "")    # Slack webhook URL
+SMTP_HOST     = os.environ.get("SMTP_HOST", "")        # Email SMTP host
+SMTP_PORT     = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USER     = os.environ.get("SMTP_USER", "")
+SMTP_PASS     = os.environ.get("SMTP_PASS", "")
+ALERT_EMAIL   = os.environ.get("ALERT_EMAIL", "")      # Email to send alerts to
+
 register_device("ubuntu-main", "linux", UBUNTU_HOST, UBUNTU_USER, UBUNTU_PASS,
                 name=f"Ubuntu Server ({UBUNTU_HOST})")
 
@@ -350,7 +359,217 @@ def get_device_id_from_source(event_source: str, device_type: str) -> str:
     return get_device_id_for_host("", device_type)
 
 
+# ── Threat Intelligence Cache ─────────────────────────────────────────────────
+ti_cache = {}  # ip -> {vt_score, country, org, isp, checked_at}
+ti_lock  = threading.Lock()
+
+
+def enrich_ip(ip: str) -> dict:
+    """Enrich an IP with VirusTotal + IPInfo data. Cached for 1 hour."""
+    if not ip or ip == "unknown":
+        return {}
+    with ti_lock:
+        cached = ti_cache.get(ip)
+        if cached:
+            age = (datetime.utcnow() - cached["checked_at"]).total_seconds()
+            if age < 3600:
+                return cached
+
+    result = {"ip": ip, "checked_at": datetime.utcnow()}
+
+    # IPInfo — free, no key needed
+    try:
+        import urllib.request
+        with urllib.request.urlopen(f"https://ipinfo.io/{ip}/json", timeout=3) as r:
+            data = json.loads(r.read().decode())
+            result["country"]  = data.get("country", "")
+            result["org"]      = data.get("org", "")
+            result["city"]     = data.get("city", "")
+            result["hostname"] = data.get("hostname", "")
+    except Exception:
+        pass
+
+    # VirusTotal — requires API key
+    if VT_API_KEY:
+        try:
+            import urllib.request
+            req = urllib.request.Request(
+                f"https://www.virustotal.com/api/v3/ip_addresses/{ip}",
+                headers={"x-apikey": VT_API_KEY}
+            )
+            with urllib.request.urlopen(req, timeout=5) as r:
+                vt = json.loads(r.read().decode())
+                stats = vt.get("data", {}).get("attributes", {}).get("last_analysis_stats", {})
+                malicious  = stats.get("malicious", 0)
+                suspicious = stats.get("suspicious", 0)
+                total      = sum(stats.values()) or 1
+                result["vt_malicious"]  = malicious
+                result["vt_suspicious"] = suspicious
+                result["vt_total"]      = total
+                result["vt_score"]      = f"{malicious}/{total} vendors flagged as malicious"
+                result["vt_reputation"] = vt.get("data", {}).get("attributes", {}).get("reputation", 0)
+        except Exception:
+            pass
+
+    with ti_lock:
+        ti_cache[ip] = result
+    return result
+
+
+def send_slack_alert(alert: dict, ti: dict = None):
+    """Send a clean Slack Block Kit notification for a critical alert."""
+    if not SLACK_WEBHOOK:
+        return
+    try:
+        import urllib.request
+
+        sev       = alert.get("severity", "UNKNOWN")
+        sev_emoji = "🔴" if sev == "CRITICAL" else "🟠" if sev == "HIGH" else "🟡"
+        color     = "#FF1744" if sev == "CRITICAL" else "#FF6D00" if sev == "HIGH" else "#FFD600"
+        ip        = alert.get("ip", "unknown")
+        alert_type = alert.get("type", "").replace("_", " ")
+        kill_chain = alert.get("kill_chain", "Unknown")
+        detail     = alert.get("detail", "")
+        action     = alert.get("action", "")[:200]
+        ts_str     = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+
+        # Build threat intel line
+        ti_line = ""
+        if ti:
+            parts = []
+            if ti.get("country"):
+                parts.append(f"📍 {ti.get('city','')} {ti.get('country','')} | {ti.get('org','')}")
+            if ti.get("vt_malicious", 0) > 0:
+                parts.append(f"🦠 *{ti['vt_malicious']}/{ti['vt_total']}* vendors flagged malicious")
+            elif ti.get("vt_total"):
+                parts.append(f"✅ VirusTotal clean ({ti['vt_total']} vendors)")
+            if parts:
+                ti_line = " | ".join(parts)
+
+        payload = {
+            "attachments": [{
+                "color": color,
+                "blocks": [
+                    {
+                        "type": "header",
+                        "text": {
+                            "type": "plain_text",
+                            "text": f"{sev_emoji} CYBRIX — {alert_type}",
+                            "emoji": True
+                        }
+                    },
+                    {"type": "divider"},
+                    {
+                        "type": "section",
+                        "fields": [
+                            {"type": "mrkdwn", "text": f"*Severity*" + chr(10) + f"{sev_emoji} `{sev}`"},
+                            {"type": "mrkdwn", "text": f"*Attacker IP*" + chr(10) + f"`{ip}`"},
+                            {"type": "mrkdwn", "text": f"*Kill Chain*" + chr(10) + f"{kill_chain}"},
+                            {"type": "mrkdwn", "text": f"*Time*" + chr(10) + f"{ts_str}"},
+                        ]
+                    },
+                    {
+                        "type": "section",
+                        "text": {"type": "mrkdwn", "text": f"*Detail*" + chr(10) + f"{detail}"}
+                    },
+                ] + ([{
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": f"*Threat Intelligence*" + chr(10) + f"{ti_line}"}
+                }] if ti_line else []) + [
+                    {
+                        "type": "section",
+                        "text": {"type": "mrkdwn", "text": f"*Recommended Action*" + chr(10) + "```" + action + "```"}
+                    },
+                    {"type": "divider"},
+                    {
+                        "type": "context",
+                        "elements": [
+                            {"type": "mrkdwn", "text": f"🛡 *CYBRIX SOC* | {ts_str}"}
+                        ]
+                    }
+                ]
+            }]
+        }
+
+        data = json.dumps(payload).encode()
+        req  = urllib.request.Request(SLACK_WEBHOOK, data=data,
+                                      headers={"Content-Type": "application/json"})
+        urllib.request.urlopen(req, timeout=5)
+        print(f"[SLACK] Alert sent for {ip} — {alert_type}")
+    except Exception as e:
+        print(f"[SLACK] Error: {e}")
+
+
+def send_email_alert(alert: dict, ti: dict = None):
+    """Send an email notification for a critical alert."""
+    if not SMTP_HOST or not ALERT_EMAIL:
+        return
+    try:
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+
+        ti_text = ""
+        if ti:
+            if ti.get("country"):
+                ti_text += f"Location: {ti.get('city','')} {ti.get('country','')} — {ti.get('org','')}" + chr(10)
+            if ti.get("vt_score"):
+                ti_text += f"VirusTotal: {ti['vt_score']}" + chr(10)
+
+        sep = "=" * 50
+        ti_section = f"THREAT INTELLIGENCE:{chr(10)}{ti_text}" if ti_text else ""
+        body = (
+            f"CYBRIX SECURITY ALERT{chr(10)}{sep}{chr(10)}"
+            f"Type:      {alert.get('type','').replace('_',' ')}{chr(10)}"
+            f"Severity:  {alert.get('severity','')}{chr(10)}"
+            f"Attacker:  {alert.get('ip','')}{chr(10)}"
+            f"Detail:    {alert.get('detail','')}{chr(10)}"
+            f"Kill Chain:{alert.get('kill_chain','')}{chr(10)}"
+            f"Action:    {alert.get('action','')}{chr(10)}{chr(10)}"
+            f"{ti_section}{chr(10)}"
+            f"{sep}{chr(10)}"
+            f"CYBRIX SOC — {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC{chr(10)}"
+        )
+        msg = MIMEMultipart()
+        msg["From"]    = SMTP_USER
+        msg["To"]      = ALERT_EMAIL
+        msg["Subject"] = f"🚨 CYBRIX [{alert.get('severity','')}] {alert.get('type','').replace('_',' ')} from {alert.get('ip','')}"
+        msg.attach(MIMEText(body, "plain"))
+
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASS)
+            server.sendmail(SMTP_USER, ALERT_EMAIL, msg.as_string())
+        print(f"[EMAIL] Alert sent to {ALERT_EMAIL}")
+    except Exception as e:
+        print(f"[EMAIL] Error: {e}")
+
+
 def queue_alert(alert: dict, triggering_event: dict):
+    # Enrich attacker IP in background thread
+    ip = alert.get("ip", "")
+    def enrich_and_notify():
+        ti = enrich_ip(ip) if ip else {}
+        if ti:
+            # Add TI to alert detail
+            ti_parts = []
+            if ti.get("country"):
+                ti_parts.append(f"📍 {ti.get('city','')} {ti['country']} ({ti.get('org','')})")
+            if ti.get("vt_malicious", 0) > 0:
+                ti_parts.append(f"🦠 VirusTotal: {ti['vt_malicious']}/{ti['vt_total']} vendors")
+            elif ti.get("vt_score"):
+                ti_parts.append(f"✅ VirusTotal: clean")
+            if ti_parts:
+                alert["ti_info"] = " | ".join(ti_parts)
+                alert["detail"] = alert.get("detail", "") + chr(10) + alert["ti_info"]
+
+        # Send notifications for CRITICAL/HIGH alerts only
+        if alert.get("severity") in ("CRITICAL", "HIGH"):
+            send_slack_alert(alert, ti)
+            send_email_alert(alert, ti)
+
+    threading.Thread(target=enrich_and_notify, daemon=True).start()
+
     with alert_lock:
         pending_alerts.append({
             "alert": alert, "event": triggering_event,
@@ -1789,6 +2008,13 @@ def unblock_ip(ip):
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/threat_intel/<path:ip>", methods=["GET"])
+def get_threat_intel(ip):
+    """Returns cached threat intelligence for an IP."""
+    ti = enrich_ip(ip)
+    return jsonify(ti if ti else {"ip": ip, "status": "no data"})
 
 
 @app.route("/api/alerts/active", methods=["GET"])
