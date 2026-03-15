@@ -10,7 +10,7 @@
 
 CYBRIX is a real-time SOC (Security Operations Center) dashboard that monitors multiple network devices simultaneously, detects attacks using behavioral analysis, and automatically blocks threats with one click — on the actual device.
 
-https://cdn.discordapp.com/attachments/1480146658149798051/1482871725006913647/Screenshot_2.png?ex=69b88769&is=69b735e9&hm=cfcf1a1359388ea05f3d833bbec1c59af87568ce1895634de3dba854c9bc5c8a&
+![CYBRIX Dashboard](https://cdn.discordapp.com/attachments/1480146658149798051/1482871725006913647/Screenshot_2.png?ex=69b88769&is=69b735e9&hm=cfcf1a1359388ea05f3d833bbec1c59af87568ce1895634de3dba854c9bc5c8a&)
 
 ### Supported Devices
 | Device | Method | Capabilities |
