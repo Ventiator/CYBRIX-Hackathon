@@ -174,4 +174,4 @@ show ip access-lists CYBRIXBLOCKLIST
 
 ---
 
-*Hackathon Thessaloniki 2026 — Netcompany*
+*Hackathon Project 2026*
